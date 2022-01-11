@@ -64,9 +64,29 @@ async fn start_http(port: u16, bind :String) {
     let root = warp::path::end().map(|| "Welcome to my warp server!");
     let routes = root.with(warp::cors().allow_any_origin());
 
-    let bind_addr = bind.parse::<Ipv4Addr>().unwrap();
-    let socket = SocketAddr::new(IpAddr::V4(bind_addr), port);
+    let socket = create_socket(port, bind);
 
     
     warp::serve(routes).run(socket).await;
+}
+
+fn create_socket(port: u16, bind :String) -> SocketAddr {
+    let bind_addr = bind.parse::<Ipv4Addr>().unwrap();
+    let socket = SocketAddr::new(IpAddr::V4(bind_addr), port);
+    return socket;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_socket_create() {
+        let socket = create_socket(1234, "1.2.3.4".to_owned());
+
+        assert_eq!(socket.port(), 1234);
+        assert_eq!(socket.is_ipv4(), true);
+        
+
+    }
 }
