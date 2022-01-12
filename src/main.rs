@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use structopt::StructOpt;
 use json::object;
 use json::array;
@@ -11,44 +10,15 @@ use log;
 
 mod models;
 mod handlers;
+mod cli;
 
 type ItemsDb = Arc<Mutex<HashMap<usize, models::ShoppingListItem>>>;
 type Result<T> = std::result::Result<T, Rejection>;
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "server")]
-struct Cli {
-    // A flag, true if used in the command line. Note doc comment will
-    // be used for the help message of the flag. The name of the
-    // argument will be, by default, based on the name of the field.
-    /// Activate debug mode
-    #[structopt(short, long)]
-    debug: bool,
-
-    // The number of occurrences of the `v/verbose` flag
-    /// Verbose mode (-v, -vv, -vvv, etc.)
-    #[structopt(short, long, parse(from_occurrences))]
-    verbose: u8,
-
-    /// Set port
-    #[structopt(short, long, default_value = "5000")]
-    port: u16,
-
-
-    /// bind address
-    #[structopt(short, long, default_value = "127.0.0.1")]
-    bind: String,
-
-    /// Files to process
-    #[structopt(name = "FILE", parse(from_os_str))]
-    files: Vec<PathBuf>,
-}
-
-
 fn main() {
     log4rs::init_file("log4rs.yml", Default::default()).unwrap();
-    let opt = Cli::from_args();
-    println!("{:#?}", opt);
+    let opt = cli::Cli::from_args();
+    log::info!("{:#?}", opt);
 
     let data = object!{
         "code" => 200,
@@ -62,11 +32,11 @@ fn main() {
         }
     };
 
-    println!("{:#?}", data.dump());
-    println!("{}", data["code"]);
-    println!("Start");
+    log::info!("{:#?}", data.dump());
+    log::info!("{}", data["code"]);
+    log::info!("Start");
     start_http(opt.port, opt.bind);
-    println!("Stop");
+    log::info!("Stop");
 }
 
 
