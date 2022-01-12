@@ -2,8 +2,18 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use json::object;
 use json::array;
-use warp::Filter;
+use std::{collections::HashMap, convert::Infallible, sync::Arc};
+use tokio::sync::Mutex;
+use warp::{Filter, Rejection};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use log4rs;
+use log;
+
+mod models;
+mod handlers;
+
+type ItemsDb = Arc<Mutex<HashMap<usize, models::ShoppingListItem>>>;
+type Result<T> = std::result::Result<T, Rejection>;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "server")]
@@ -36,7 +46,7 @@ struct Cli {
 
 
 fn main() {
-    
+    log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     let opt = Cli::from_args();
     println!("{:#?}", opt);
 
@@ -59,15 +69,46 @@ fn main() {
     println!("Stop");
 }
 
+
+
 #[tokio::main]
 async fn start_http(port: u16, bind :String) {
+    log::warn!("Starting !!");
+    let items_db: ItemsDb = Arc::new(Mutex::new(HashMap::new()));
     let root = warp::path::end().map(|| "Welcome to my warp server!");
-    let routes = root.with(warp::cors().allow_any_origin());
+    
 
     let socket = create_socket(port, bind);
 
-    
+    let shopping_list_items_route = warp::path("shopping_list_items")
+        .and(warp::get())
+        .and(with_items_db(items_db.clone()))
+        .and_then(handlers::get_shopping_list_items);
+
+    let shopping_list_item_route = warp::path("shopping_list_item")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_items_db(items_db.clone()))
+        .and_then(handlers::create_shopping_list_item)
+    .or(warp::path!("shopping_list_item" / usize)
+        .and(warp::get())
+        .and(with_items_db(items_db.clone()))
+        .and_then(handlers::get_shopping_list_item_by_id));
+
+
+    let routes = root
+        .or(shopping_list_item_route)
+        .or(shopping_list_items_route)
+        .with(warp::cors().allow_any_origin());
+
+        
     warp::serve(routes).run(socket).await;
+}
+
+fn with_items_db(
+    items_db: ItemsDb,
+) -> impl Filter<Extract = (ItemsDb,), Error = Infallible> + Clone {
+    warp::any().map(move || items_db.clone())
 }
 
 fn create_socket(port: u16, bind :String) -> SocketAddr {
