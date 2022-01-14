@@ -1,6 +1,4 @@
 use structopt::StructOpt;
-use json::object;
-use json::array;
 use std::{collections::HashMap, convert::Infallible, sync::Arc};
 use tokio::sync::Mutex;
 use warp::{Filter, Rejection};
@@ -18,22 +16,12 @@ type Result<T> = std::result::Result<T, Rejection>;
 fn main() {
     log4rs::init_file("log4rs.yml", Default::default()).unwrap();
     let opt = cli::Cli::from_args();
-    log::info!("{:#?}", opt);
 
-    let data = object!{
-        "code" => 200,
-        "success" => true,
-        "payload" => object!{
-            "features" => array![
-                "awesome",
-                "easyAPI",
-                "lowLearningCurve"
-            ]
-        }
-    };
+    if opt.debug {
+        log::debug!("Options");
+        log::debug!("{:#?}", opt);
+    }
 
-    log::info!("{:#?}", data.dump());
-    log::info!("{}", data["code"]);
     log::info!("Start");
     start_http(opt.port, opt.bind);
     log::info!("Stop");
